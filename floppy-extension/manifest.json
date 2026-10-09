@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Floppy Browser Scrobbler",
+  "version": "0.1.2",
+  "description": "Scrobble Netflix and JioHotstar browser playback directly to Floppy.",
+  "permissions": ["storage"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "host_permissions": ["https://www.netflix.com/*", "https://www.hotstar.com/*", "https://*.hotstar.com/*", "https://www.jiohotstar.com/*", "https://*.jiohotstar.com/*"],
+  "background": { "service_worker": "background.js" },
+  "options_page": "options.html",
+  "action": { "default_popup": "options.html", "default_title": "Floppy Browser Scrobbler" },
+  "content_scripts": [
+    { "matches": ["https://www.netflix.com/*"], "js": ["netflix-page.js"], "world": "MAIN", "run_at": "document_idle" },
+    { "matches": ["https://www.netflix.com/*", "https://www.hotstar.com/*", "https://*.hotstar.com/*", "https://www.jiohotstar.com/*", "https://*.jiohotstar.com/*"], "js": ["content.js"], "run_at": "document_idle" }
+  ]
+}

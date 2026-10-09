@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Floppy Browser Scrobbler</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #211e32;
+      background: #f8f7fc;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { width: 100%; }
+    body { width: 380px; max-width: 100%; margin: 0 auto; overflow-x: hidden; }
+    .hero {
+      padding: 20px 22px 22px;
+      background: linear-gradient(135deg, #342078 0%, #5d3fc0 100%);
+      color: #fff;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .brand-mark {
+      display: grid; place-items: center; flex: none;
+      width: 32px; height: 32px; border-radius: 10px;
+      background: rgba(255, 255, 255, .18);
+      font-size: 19px; font-weight: 800; line-height: 1;
+    }
+    .brand-name { font-size: 13px; font-weight: 700; letter-spacing: .02em; }
+    h1 { margin: 0; font-size: 21px; line-height: 1.2; letter-spacing: -.035em; }
+    .hero p { margin: 8px 0 0; color: #e8e1ff; font-size: 13px; line-height: 1.45; }
+    main { padding: 20px 22px 18px; }
+    .section-title { margin: 0 0 4px; font-size: 15px; letter-spacing: -.01em; }
+    .section-copy { margin: 0 0 18px; color: #625e72; font-size: 12px; line-height: 1.45; }
+    .field { margin: 0 0 15px; }
+    label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; }
+    input {
+      display: block; width: 100%; min-width: 0; height: 42px;
+      padding: 0 12px; border: 1px solid #d8d4e5; border-radius: 9px;
+      outline: none; background: #fff; color: #211e32;
+      font: inherit; font-size: 13px;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    input::placeholder { color: #8b8798; opacity: 1; }
+    input:hover { border-color: #aaa0cc; }
+    input:focus-visible { border-color: #6041c5; box-shadow: 0 0 0 3px #ddd3ff; }
+    .hint { display: block; margin-top: 6px; color: #625e72; font-size: 11px; line-height: 1.4; }
+    button {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; min-height: 43px; margin-top: 19px;
+      border: 0; border-radius: 9px; background: #4930a7; color: #fff;
+      font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: background .15s ease, transform .15s ease;
+    }
+    button:hover { background: #352181; }
+    button:active { transform: translateY(1px); }
+    button:focus-visible { outline: 3px solid #a994ff; outline-offset: 2px; }
+    #status {
+      margin: 14px 0 0; padding: 10px 12px;
+      border: 1px solid #ded8ef; border-radius: 9px;
+      background: #f2effb; color: #352181;
+      font-size: 12px; line-height: 1.4; overflow-wrap: anywhere;
+    }
+    #status:empty { display: none; }
+    #status[data-kind="error"] { border-color: #f4c4c4; background: #fff2f2; color: #902c37; }
+    #status[data-kind="success"] { border-color: #bbe5ce; background: #eefaf2; color: #206940; }
+    footer { padding: 13px 22px 16px; border-top: 1px solid #ebe8f3; }
+    .services { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 9px; }
+    .services span {
+      padding: 4px 8px; border: 1px solid #e2dfeb; border-radius: 999px;
+      background: #fff; color: #514b63; font-size: 10px; font-weight: 650;
+    }
+    footer p { margin: 0; color: #706b7d; font-size: 11px; line-height: 1.4; }
+    @media (max-width: 330px) {
+      .hero { padding: 18px; }
+      main { padding: 18px; }
+      footer { padding: 12px 18px 15px; }
+      h1 { font-size: 19px; }
+    }
+    @media (max-width: 240px) {
+      .hero, main { padding: 12px; }
+      footer { padding: 12px; }
+      .brand { margin-bottom: 10px; }
+      h1 { font-size: 17px; }
+      input, button { font-size: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      input, button { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">F</span><span class="brand-name">Floppy</span></div>
+    <h1>Browser Scrobbler</h1>
+    <p>Your Netflix and JioHotstar watches, saved directly to Floppy.</p>
+  </header>
+  <main>
+    <h2 class="section-title">Connect your Floppy</h2>
+    <p class="section-copy">Set this up once, then watch in this browser.</p>
+    <form id="settings">
+      <div class="field">
+        <label for="url">Floppy URL</label>
+        <input id="url" type="url" inputmode="url" placeholder="https://your-floppy-url" autocomplete="url" required>
+      </div>
+      <div class="field">
+        <label for="token">API token</label>
+        <input id="token" type="password" autocomplete="off" placeholder="Paste your API token" aria-describedby="token-hint" required>
+        <small class="hint" id="token-hint">Find it in Floppy → Settings → Integrations. Stored in this browser profile and sent only to your Floppy URL.</small>
+      </div>
+      <button type="submit">Save and test connection</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+  <footer>
+    <div class="services" aria-label="Supported services"><span>Netflix</span><span>JioHotstar</span></div>
+    <p>Tracks browser playback. TV and phone apps are not supported.</p>
+  </footer>
+  <script src="options.js"></script>
+</body>
+</html>
