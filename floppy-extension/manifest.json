@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Floppy Browser Scrobbler",
-  "version": "0.1.2",
+  "version": "0.1.6",
   "description": "Scrobble Netflix and JioHotstar browser playback directly to Floppy.",
   "permissions": ["storage"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],

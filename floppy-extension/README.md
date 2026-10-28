@@ -11,12 +11,14 @@ A focused Chrome/Chromium extension based on the Netflix and JioHotstar playback
 
 After reloading or updating the extension, refresh any Netflix and JioHotstar tabs that were already open. Chrome invalidates their old content scripts during an extension reload.
 
+If a show has several TMDB matches or Floppy cannot fetch episode metadata, the popup offers a title selector. Check the TMDB links, select the correct show, and choose **Use this match**. The extension saves your selection for future episodes and retries playback without the failing metadata lookup.
+
 The extension requests access to the Floppy origin you enter. The token is held in Chrome's local extension storage and sent only to that origin. It is never sent to Trakt. Use HTTPS for a remote Floppy instance.
 
 ## Behavior and limits
 
 - Live browser playback only. It cannot see playback in TV or phone apps. It does not backfill Netflix history.
-- A movie is matched to one exact TMDB movie title in Floppy's search results. An episode is matched by its exact show title and season/episode number. Ambiguous titles are skipped and reported in the popup rather than attached to a potentially wrong item.
+- Movies use exact TMDB title matching first. For longer titles, a single extra or missing character is accepted only when the release year matches and there is one qualifying result. Episodes require an exact show title and season/episode number. When several shows share a title, the episode title and season/episode numbers must identify one show uniquely. Remaining ambiguous matches are skipped and reported in the popup.
 - Floppy records a completed watch when playback ends at 80% or later. Shorter sessions save a resume position without adding a completed watch.
 - Streaming sites change their page and player internals. The Netflix metadata API and JioHotstar overlay extraction are based on upstream code as of this fork and may need updates.
 - The extension needs Floppy's `/api/v1/search/{movie|tv}/` and `/api/v1/scrobble/` endpoints. It was built against the schema served by `https://floppy.abinmn.dev/api/schema/` on 2026-10-09.

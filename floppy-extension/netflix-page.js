@@ -33,7 +33,10 @@
           if (!response.ok) continue;
           const data = await response.json();
           if (data?.video) {
-            const item = parseMetadata(data.video);
+            const item = parseMetadata(data.video, id);
+            // A successful HTTP response may still contain incomplete metadata.
+            // Keep trying and allow a later sample to retry instead of caching null.
+            if (!item) continue;
             metadataCache.set(id, item);
             return item;
           }
@@ -44,11 +47,11 @@
     return null;
   }
 
-  function parseMetadata(video) {
+  function parseMetadata(video, playbackId) {
     if (video.type === 'movie') return {type: 'movie', title: video.title, year: video.year || 0};
     if (video.type !== 'show') return null;
     for (const season of video.seasons || []) {
-      const episode = (season.episodes || []).find((value) => value.id === video.currentEpisode);
+      const episode = (season.episodes || []).find((value) => String(value.id) === playbackId);
       if (episode && !video.hiddenEpisodeNumbers && season.seq > 0 && episode.seq > 0) {
         return {type: 'episode', title: episode.title, seriesTitle: video.title,
           year: video.year || 0, season: season.seq, episode: episode.seq};

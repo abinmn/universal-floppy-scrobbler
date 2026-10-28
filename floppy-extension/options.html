@@ -34,7 +34,7 @@
     .section-copy { margin: 0 0 18px; color: #625e72; font-size: 12px; line-height: 1.45; }
     .field { margin: 0 0 15px; }
     label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; }
-    input {
+    input, select {
       display: block; width: 100%; min-width: 0; height: 42px;
       padding: 0 12px; border: 1px solid #d8d4e5; border-radius: 9px;
       outline: none; background: #fff; color: #211e32;
@@ -64,6 +64,9 @@
     #status:empty { display: none; }
     #status[data-kind="error"] { border-color: #f4c4c4; background: #fff2f2; color: #902c37; }
     #status[data-kind="success"] { border-color: #bbe5ce; background: #eefaf2; color: #206940; }
+    #match-settings { margin-top: 18px; }
+    #match-settings[hidden] { display: none; }
+    #match-preview { display: inline-block; margin-top: 8px; font-size: 12px; }
     footer { padding: 13px 22px 16px; border-top: 1px solid #ebe8f3; }
     .services { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 9px; }
     .services span {
@@ -111,6 +114,13 @@
       <button type="submit">Save and test connection</button>
     </form>
     <p id="status" role="status" aria-live="polite"></p>
+    <form id="match-settings" hidden>
+      <label for="match-choice" id="match-label">Choose the correct show</label>
+      <select id="match-choice" required></select>
+      <a id="match-preview" target="_blank" rel="noopener noreferrer" hidden>View selected title on TMDB</a>
+      <small class="hint">Your choice is saved for future episodes of this title.</small>
+      <button type="submit">Use this match</button>
+    </form>
   </main>
   <footer>
     <div class="services" aria-label="Supported services"><span>Netflix</span><span>JioHotstar</span></div>

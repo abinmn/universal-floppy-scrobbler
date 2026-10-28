@@ -7,6 +7,18 @@ function normalized(title) {
   return String(title || '').normalize('NFKD').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
+function spellingVariant(left, right) {
+  const a = normalized(left);
+  const b = normalized(right);
+  if (Math.min(a.length, b.length) < 12 || Math.abs(a.length - b.length) !== 1 ||
+      a.split(' ').length !== b.split(' ').length) return false;
+  const shorter = a.length < b.length ? a : b;
+  const longer = a.length < b.length ? b : a;
+  let index = 0;
+  while (index < shorter.length && shorter[index] === longer[index]) index++;
+  return shorter.slice(index) === longer.slice(index + 1);
+}
+
 function validSample(sample) {
   if (!sample || typeof sample.key !== 'string' || !/^(netflix|hotstar):\d+$/.test(sample.key)) return false;
   const item = sample.item;
@@ -40,14 +52,64 @@ async function floppyRequest(path, options = {}) {
 async function resolveItem(item) {
   const mediaType = item.type === 'movie' ? 'movie' : 'tv';
   const query = item.type === 'movie' ? item.title : item.seriesTitle;
-  const cacheKey = `${mediaType}:${normalized(query)}:${item.year || ''}`;
+  const correctionKey = `${mediaType}:${normalized(query)}:${item.year || ''}`;
+  const {titleCorrections} = await chrome.storage.local.get('titleCorrections');
+  const correction = titleCorrections?.[correctionKey];
+  if (correction && /^\d+$/.test(String(correction))) return {tmdb: String(correction)};
+  const cacheKey = correctionKey +
+    (item.type === 'episode' ? `:${item.season}:${item.episode}:${normalized(item.title)}` : '');
   if (titleCache.has(cacheKey)) return titleCache.get(cacheKey);
-  const response = await floppyRequest(`/api/v1/search/${mediaType}/?search=${encodeURIComponent(query)}&limit=20`);
+  const response = await floppyRequest(`/api/v1/search/${mediaType}/?search=${encodeURIComponent(query)}&source=tmdb&limit=20`);
   const results = Array.isArray(response.results) ? response.results : [];
-  const exact = results.filter((result) => normalized(result.title) === normalized(query) && result.source === 'tmdb');
-  const yearMatch = item.year ? exact.find((result) => Number(result.year) === Number(item.year)) : null;
-  const result = yearMatch || (exact.length === 1 ? exact[0] : null);
-  if (!result?.media_id) throw new Error(`Could not safely match ${query} in Floppy's TMDB catalog.`);
+  const exact = [...new Map(results.filter((result) => normalized(result.title) === normalized(query) &&
+    result.source === 'tmdb' && /^\d+$/.test(String(result.media_id)))
+    .map((result) => [String(result.media_id), result])).values()];
+  const yearMatches = item.year ? exact.filter((result) => Number(result.year) === Number(item.year)) : [];
+  const candidates = yearMatches.length ? yearMatches : exact;
+  const offerMatch = async () => {
+    if (candidates.length > 1) await chrome.storage.local.set({pendingMatch: {
+      key: correctionKey, title: query, mediaType,
+      candidates: candidates.map(({media_id, title, year}) => ({media_id: String(media_id), title, year})),
+    }});
+  };
+  const lookupDetails = [];
+  let result = candidates.length === 1 ? candidates[0] : null;
+  if (!result && candidates.length > 1 && item.type === 'episode' && normalized(item.title)) {
+    const episodeMatches = [];
+    for (const candidate of candidates) {
+      try {
+        const episode = await floppyRequest(`/api/v1/media/tv/tmdb/${candidate.media_id}/${item.season}/${item.episode}/`);
+        lookupDetails.push(`${candidate.media_id}: ${JSON.stringify(episode.title)} S${episode.details?.season_number}E${episode.details?.episode_number} (fields: ${Object.keys(episode).join(',')})`);
+        if (normalized(episode.title) === normalized(item.title) &&
+            Number(episode.details?.season_number) === item.season &&
+            Number(episode.details?.episode_number) === item.episode) episodeMatches.push(candidate);
+      } catch (error) {
+        // A same-named show may not have this season/episode. Other failures
+        // leave a candidate unverified, so do not assume it is a mismatch.
+        if (!/^Floppy HTTP 404:/.test(error.message || '')) {
+          await offerMatch();
+          throw new Error(`${error.message} (while checking ${query}, TMDB ${candidate.media_id}, S${item.season}E${item.episode}). Choose the correct show below to bypass this lookup.`);
+        }
+        lookupDetails.push(`${candidate.media_id}: episode not found`);
+      }
+    }
+    if (episodeMatches.length === 1) result = episodeMatches[0];
+  }
+  // Netflix and TMDB sometimes transliterate the same title differently. Only
+  // accept a single missing/extra character with a matching movie release year.
+  if (!result && exact.length === 0 && item.type === 'movie' && item.year > 0) {
+    const variants = results.filter((candidate) => candidate.source === 'tmdb' &&
+      Number(candidate.year) === Number(item.year) && spellingVariant(candidate.title, query));
+    if (variants.length === 1) result = variants[0];
+  }
+  if (!result?.media_id) {
+    await offerMatch();
+    throw new Error(`Could not safely match ${query} in Floppy's TMDB catalog. ` +
+    `Received ${results.length} results, ${exact.length} exact titles (response fields: ${Object.keys(response).join(',')}). ` +
+    (item.type === 'episode' ? `Expected ${JSON.stringify(item.title)} S${item.season}E${item.episode}. ` : '') +
+    (lookupDetails.length ? `Episode lookup: ${lookupDetails.join('; ')}.` :
+      `Catalog: ${results.slice(0, 5).map((value) => `${value.source}:${value.media_id} ${JSON.stringify(value.title)}`).join('; ')}.`));
+  }
   const resolved = {tmdb: String(result.media_id)};
   titleCache.set(cacheKey, resolved);
   return resolved;
@@ -70,6 +132,9 @@ async function sendScrobble(action, session) {
   }
   if (action === 'stop') body.completed = sample.position / sample.duration >= 0.8 || !!sample.ended;
   await floppyRequest('/api/v1/scrobble/', {method: 'POST', body: JSON.stringify(body)});
+  if (action === 'start' || action === 'pause') {
+    await chrome.storage.local.set({lastStatus: `${action === 'start' ? 'Tracking' : 'Paused'} ${item.type === 'episode' ? item.seriesTitle + ' — ' : ''}${item.title}.`});
+  }
   if (action === 'stop' && body.completed) await chrome.storage.local.set({lastStatus: `Scrobbled ${item.type === 'episode' ? item.seriesTitle + ' — ' : ''}${item.title}.`});
 }
 
